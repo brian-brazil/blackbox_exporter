@@ -465,7 +465,8 @@ func ProbeHTTP(ctx context.Context, target string, module config.Module, registr
 	if resp == nil {
 		resp = &http.Response{}
 		if err != nil {
-			result = ProbeFailure("Error for HTTP request", "err", err.Error())
+			logger.Error("Error for HTTP request", "err", err.Error())
+			result = ProbeFailure("HTTP request failed")
 			// no return here, since there are cases where an error here
 			// might be acceptable after all.
 		}
@@ -481,8 +482,8 @@ func ProbeHTTP(ctx context.Context, target string, module config.Module, registr
 				}
 			}
 			if !result.success {
-				result = ProbeFailure("Invalid HTTP response status code", "status_code", strconv.Itoa(resp.StatusCode),
-					"valid_status_codes", fmt.Sprintf("%v", httpConfig.ValidStatusCodes))
+				logger.Info("Valid status codes", "codes", httpConfig.ValidStatusCodes)
+				result = ProbeFailure("Invalid HTTP response status code", "status_code", strconv.Itoa(resp.StatusCode))
 			}
 		} else if 200 <= resp.StatusCode && resp.StatusCode < 300 {
 			result = ProbeSuccess()
@@ -505,7 +506,8 @@ func ProbeHTTP(ctx context.Context, target string, module config.Module, registr
 		if httpConfig.Compression != "" {
 			dec, err := getDecompressionReader(httpConfig.Compression, resp.Body)
 			if err != nil {
-				result = ProbeFailure("Failed to get decompressor for HTTP response body", "err", err.Error())
+				logger.Error(err.Error())
+				result = ProbeFailure("Failed to get decompressor for HTTP response body")
 			} else if dec != nil {
 				// Since we are replacing the original resp.Body with the decoder, we need to make sure
 				// we close the original body. We cannot close it right away because the decompressor
@@ -545,7 +547,8 @@ func ProbeHTTP(ctx context.Context, target string, module config.Module, registr
 		if !requestErrored {
 			_, err = io.Copy(io.Discard, byteCounter)
 			if err != nil {
-				result = ProbeFailure("Failed to read HTTP response body", "err", err.Error())
+				logger.Error(err.Error())
+				result = ProbeFailure("Failed to read HTTP response body")
 			}
 
 			respBodyBytes = byteCounter.n
